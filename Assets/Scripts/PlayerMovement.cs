@@ -22,8 +22,13 @@ public class PlayerMovement : MonoBehaviour
   public float crouchSpeed;
   public float crouchYScale;
   private float startYScale;
-  private bool checkUncrouch;
   private RaycastHit ceilingHit;
+
+  [Header("Sliding")]
+  public float maxSlideTime;
+  public float slideForce;
+  public float slideYScale;
+  private float slideTimer;
 
   [Header("Keybinds")]
   public KeyCode jumpKey = KeyCode.Space;
@@ -33,7 +38,13 @@ public class PlayerMovement : MonoBehaviour
   [Header("Ground Check")]
   public float playerHeight;
   public LayerMask groundLayer;
-  bool grounded;
+  public bool grounded;
+
+  [HideInInspector]
+  public bool checkUncrouch;
+
+  private bool sliding;
+  private bool sprinting;
 
   [Header("Slope Handling")]
   public float maxSlopeAngle;
@@ -56,7 +67,8 @@ public class PlayerMovement : MonoBehaviour
     walking,
     sprinting,
     crouching,
-    air
+    air,
+    sliding
   }
 
   private void Start()
@@ -89,6 +101,18 @@ public class PlayerMovement : MonoBehaviour
       }
     }
 
+    // slide timer and momentum check
+    if (sliding)
+    {
+      slideTimer -= Time.deltaTime;
+
+      // check horizontal velocity (momentum)
+      Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+
+      if (slideTimer <= 0 || flatVel.magnitude < 0.5f)
+        StopSlide();
+    }
+
     // handle drag
     if (grounded)
       rb.linearDamping = groundDrag;
@@ -117,7 +141,7 @@ public class PlayerMovement : MonoBehaviour
     }
 
     // start crouch
-    if (Input.GetKeyDown(crouchKey))
+    if (Input.GetKeyDown(crouchKey) && !sliding)
     {
       transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
       rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
@@ -125,7 +149,7 @@ public class PlayerMovement : MonoBehaviour
     }
 
     // stop crouch
-    if (Input.GetKeyUp(crouchKey))
+    if (Input.GetKeyUp(crouchKey) && !sliding)
     {
       if (!CheckCeiling())
       {
@@ -136,15 +160,33 @@ public class PlayerMovement : MonoBehaviour
         checkUncrouch = true;
       }
     }
+
+    // start slide
+    if (Input.GetKeyDown(crouchKey) && grounded && sprinting && (horizontalInput != 0 || verticalInput != 0))
+    {
+      StartSlide();
+    }
   }
 
   private void StateHandler()
   {
+    // Mode - Sliding
+    if (sliding)
+    {
+      state = MovementState.sliding;
+
+      if (OnSlope() && rb.linearVelocity.y < 0.1f)
+        moveSpeed = slideForce;
+      else
+        moveSpeed = sprintSpeed;
+    }
+
     // Mode - Crouching
-    if (Input.GetKey(crouchKey))
+    else if (Input.GetKey(crouchKey))
     {
       state = MovementState.crouching;
       moveSpeed = crouchSpeed;
+      sprinting = false;
     }
 
     // Mode - Sprinting
@@ -152,6 +194,7 @@ public class PlayerMovement : MonoBehaviour
     {
       state = MovementState.sprinting;
       moveSpeed = sprintSpeed;
+      sprinting = true;
     }
 
     // Mode - Walking
@@ -159,12 +202,14 @@ public class PlayerMovement : MonoBehaviour
     {
       state = MovementState.walking;
       moveSpeed = walkSpeed;
+      sprinting = false;
     }
 
     // Mode - Air
     else
     {
       state = MovementState.air;
+      sprinting = false;
     }
   }
 
@@ -173,8 +218,24 @@ public class PlayerMovement : MonoBehaviour
     // calculate movement direction
     moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
+    // sliding
+    if (sliding)
+    {
+      if (OnSlope())
+      {
+        rb.AddForce(GetSlopeMoveDirection() * slideForce, ForceMode.Force);
+
+        if (rb.linearVelocity.y > 0)
+          rb.AddForce(Vector3.down * 80f, ForceMode.Force);
+      }
+      else
+      {
+        rb.AddForce(moveDirection.normalized * slideForce, ForceMode.Force);
+      }
+    }
+
     // on slope
-    if (OnSlope() && !exitingSlope)
+    else if (OnSlope() && !exitingSlope)
     {
       rb.AddForce(GetSlopeMoveDirection() * moveSpeed * 20f, ForceMode.Force);
 
@@ -249,12 +310,35 @@ public class PlayerMovement : MonoBehaviour
     return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
   }
 
-  private bool CheckCeiling()
+  public bool CheckCeiling()
   {
     if (Physics.Raycast(transform.position, Vector3.up, out ceilingHit, startYScale * 0.5f + 0.2f))
     {
       return true;
     }
     return false;
+  }
+
+  private void StartSlide()
+  {
+    sliding = true;
+    transform.localScale = new Vector3(transform.localScale.x, slideYScale, transform.localScale.z);
+    rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+    slideTimer = maxSlideTime;
+  }
+
+  private void StopSlide()
+  {
+    sliding = false;
+
+    if (!CheckCeiling())
+    {
+      transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+      rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+    }
+    else
+    {
+      checkUncrouch = true;
+    }
   }
 }
