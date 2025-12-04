@@ -2,14 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Simple script to keep the camera object at a specific position
+/// Follows a target transform (usually positioned at the player's head)
+/// </summary>
 public class MoveCamera : MonoBehaviour
 {
-  // Start is called once before the first execution of Update after the MonoBehaviour is created
   public Transform cameraPosition;
 
-  // Update is called once per frame
   void Update()
   {
+    // Match the camera position to the target every frame
     transform.position = cameraPosition.position;
   }
 }

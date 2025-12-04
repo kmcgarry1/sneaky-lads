@@ -11,7 +11,8 @@ GameObject:
   - component: {fileID: 8807473608401806287}
   - component: {fileID: 4745491340908483608}
   - component: {fileID: 8245342401828988451}
-  - component: {fileID: 811230195307855604}
+  - component: {fileID: 3672724685224541828}
+  - component: {fileID: 2137971250397981873}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -84,7 +85,7 @@ CapsuleCollider:
   m_Height: 1.5
   m_Direction: 1
   m_Center: {x: 0, y: 0.81, z: 0}
---- !u!114 &811230195307855604
+--- !u!114 &3672724685224541828
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,55 +96,60 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a0a9817ba701e41ad855c509c47109e9, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  MoveAction:
-    m_Name: Move
-    m_Type: 0
-    m_ExpectedControlType: 
-    m_Id: 34cb1641-da71-4270-adaf-eed6e7b472f6
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 2D Vector
-      m_Id: 8e63ef72-9773-424b-b1ed-158a4f3a1788
-      m_Path: 2DVector
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Move
-      m_Flags: 4
-    - m_Name: up
-      m_Id: ed6891a7-218c-4a5b-9a0f-ac4f34d7c168
-      m_Path: <Keyboard>/w
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Move
-      m_Flags: 8
-    - m_Name: down
-      m_Id: b17c9ad5-17c4-4927-ac82-cca2a91f9058
-      m_Path: <Keyboard>/s
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Move
-      m_Flags: 8
-    - m_Name: left
-      m_Id: 23e05c60-ceba-4da7-8230-2cb349327230
-      m_Path: <Keyboard>/a
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Move
-      m_Flags: 8
-    - m_Name: right
-      m_Id: eaa9ca09-a4f3-4d25-a499-536bdc0fefc8
-      m_Path: <Keyboard>/d
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Move
-      m_Flags: 8
-    m_Flags: 0
-  walkSpeed: 1
-  turnSpeed: 20
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementTutorial
+  walkSpeed: 7
+  sprintSpeed: 10
+  groundDrag: 7
+  climbSpeed: 0
+  jumpForce: 10
+  jumpCooldown: 16.23
+  airMultiplier: 0.2
+  crouchSpeed: 5
+  crouchYScale: 0.5
+  maxSlideTime: 2
+  slideForce: 200
+  slideYScale: 0.5
+  jumpKey: 32
+  sprintKey: 304
+  crouchKey: 306
+  playerHeight: 2
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 8
+  grounded: 0
+  checkUncrouch: 0
+  climbing: 0
+  maxSlopeAngle: 40
+  orientation: {fileID: 0}
+  climbingScript: {fileID: 0}
+  state: 0
+--- !u!114 &2137971250397981873
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3618870615953987648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca4afe66034b64125b1afb48931ad3ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Climbing
+  orientation: {fileID: 0}
+  rb: {fileID: 4745491340908483608}
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  pm: {fileID: 3672724685224541828}
+  climbSpeed: 10
+  maxClimbTime: 0.75
+  climbJumpForce: 14
+  climbJumpBackForce: 12
+  climbJumpKey: 32
+  climbJumps: 1
+  detectionLength: 0.7
+  sphereCastRadius: 0.25
+  maxWallLookAngle: 30
+  minWallNormalAngleChange: 5
+  exitingWall: 0
+  exitWallTime: 0.2

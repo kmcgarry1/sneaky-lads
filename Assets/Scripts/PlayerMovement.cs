@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
+/// <summary>
+/// Main player movement controller handling walking, sprinting, crouching, sliding, jumping, and climbing
+/// Uses physics-based movement with Rigidbody for realistic interaction with slopes and surfaces
+/// </summary>
 public class PlayerMovement : MonoBehaviour
 {
   [Header("Movement")]
@@ -11,6 +15,7 @@ public class PlayerMovement : MonoBehaviour
   public float sprintSpeed;
 
   public float groundDrag;
+  public float climbSpeed;
 
   [Header("Jumping")]
   public float jumpForce;
@@ -45,14 +50,16 @@ public class PlayerMovement : MonoBehaviour
 
   private bool sliding;
   private bool sprinting;
+  public bool climbing;
 
   [Header("Slope Handling")]
   public float maxSlopeAngle;
   private RaycastHit slopeHit;
   private bool exitingSlope;
 
-
+  [Header("References")]
   public Transform orientation;
+  public Climbing climbingScript;
 
   float horizontalInput;
   float verticalInput;
@@ -68,7 +75,8 @@ public class PlayerMovement : MonoBehaviour
     sprinting,
     crouching,
     air,
-    sliding
+    sliding,
+    climbing
   }
 
   private void Start()
@@ -83,12 +91,12 @@ public class PlayerMovement : MonoBehaviour
 
   private void Update()
   {
-    // ground check
+    // Check if player is touching the ground by raycasting downward
     grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundLayer);
 
-    MyInput();
-    SpeedControl();
-    StateHandler();
+    MyInput();        // Process player input
+    SpeedControl();   // Limit player velocity
+    StateHandler();   // Determine current movement state
 
     // check if we can uncrouch
     if (checkUncrouch)
@@ -125,12 +133,16 @@ public class PlayerMovement : MonoBehaviour
     MovePlayer();
   }
 
+  /// <summary>
+  /// Handles all player input for movement actions (jump, crouch, slide)
+  /// </summary>
   private void MyInput()
   {
+    // Get WASD or arrow key input
     horizontalInput = Input.GetAxisRaw("Horizontal");
     verticalInput = Input.GetAxisRaw("Vertical");
 
-    // when to jump
+    // Jump when grounded and ready
     if (Input.GetKey(jumpKey) && readyToJump && grounded)
     {
       readyToJump = false;
@@ -168,10 +180,20 @@ public class PlayerMovement : MonoBehaviour
     }
   }
 
+  /// <summary>
+  /// Determines current movement state and sets appropriate move speed
+  /// Priority: Climbing > Sliding > Crouching > Sprinting > Walking > Air
+  /// </summary>
   private void StateHandler()
   {
-    // Mode - Sliding
-    if (sliding)
+    // Mode - Climbing (highest priority)
+    if (climbing)
+    {
+      state = MovementState.climbing;
+      moveSpeed = climbSpeed;
+    }
+    // Mode - Sliding (locked in once started)
+    else if (sliding)
     {
       state = MovementState.sliding;
 
@@ -213,9 +235,17 @@ public class PlayerMovement : MonoBehaviour
     }
   }
 
+  /// <summary>
+  /// Applies physics forces to move the player based on current state
+  /// Called in FixedUpdate for consistent physics calculations
+  /// </summary>
   private void MovePlayer()
   {
-    // calculate movement direction
+    // Don't move while exiting a wall climb
+    if (climbingScript.exitingWall)
+    { return; }
+
+    // Convert input to world-space movement direction
     moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
     // sliding
@@ -255,9 +285,13 @@ public class PlayerMovement : MonoBehaviour
     rb.useGravity = !OnSlope();
   }
 
+  /// <summary>
+  /// Limits player velocity to prevent exceeding the current move speed
+  /// Handles both slope and flat ground velocity capping
+  /// </summary>
   private void SpeedControl()
   {
-    // limiting speed on slope
+    // Limit total velocity on slopes
     if (OnSlope() && !exitingSlope)
     {
       if (rb.linearVelocity.magnitude > moveSpeed)
@@ -278,11 +312,14 @@ public class PlayerMovement : MonoBehaviour
     }
   }
 
+  /// <summary>
+  /// Executes a jump by resetting vertical velocity and applying upward force
+  /// </summary>
   private void Jump()
   {
     exitingSlope = true;
 
-    // reset y velocity
+    // Reset y velocity to ensure consistent jump height
     rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
 
     rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
@@ -294,6 +331,10 @@ public class PlayerMovement : MonoBehaviour
     exitingSlope = false;
   }
 
+  /// <summary>
+  /// Checks if player is standing on a slope
+  /// </summary>
+  /// <returns>True if on a slope within the max angle threshold</returns>
   private bool OnSlope()
   {
     if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.3f))
@@ -305,11 +346,19 @@ public class PlayerMovement : MonoBehaviour
     return false;
   }
 
+  /// <summary>
+  /// Projects the movement direction onto the slope surface
+  /// Ensures player moves along the slope instead of into it
+  /// </summary>
   private Vector3 GetSlopeMoveDirection()
   {
     return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
   }
 
+  /// <summary>
+  /// Checks if there's a ceiling above the player
+  /// Used to prevent standing up from crouch/slide when blocked
+  /// </summary>
   public bool CheckCeiling()
   {
     if (Physics.Raycast(transform.position, Vector3.up, out ceilingHit, startYScale * 0.5f + 0.2f))
@@ -319,6 +368,9 @@ public class PlayerMovement : MonoBehaviour
     return false;
   }
 
+  /// <summary>
+  /// Initiates slide by shrinking player and starting timer
+  /// </summary>
   private void StartSlide()
   {
     sliding = true;
@@ -327,6 +379,9 @@ public class PlayerMovement : MonoBehaviour
     slideTimer = maxSlideTime;
   }
 
+  /// <summary>
+  /// Ends slide and returns player to standing height (if no ceiling)
+  /// </summary>
   private void StopSlide()
   {
     sliding = false;
